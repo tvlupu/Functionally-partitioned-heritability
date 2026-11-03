@@ -5,7 +5,7 @@ This repository contains analysis and plotting code for the manuscript *Quantify
 ## Data preparation: `prep/`
 ### Cohort filtering and covariates
 - `cohort_filtering.py` separates individuals into three genetic similarity groups based on AoU labels and performs kinship filtering using maximum independent set methods 
-- `calc_pcs.R` / `pcs_umap.R` / `run_scat_PCs_aou.wdl` calculate principal components and generates UMAP plots per genetic similarity group
+- `calc_pcs.R` / `run_scat_PCs_aou.wdl` / `pcs_umap.R` calculate principal components and generates UMAP plots per genetic similarity group
 - `mph_covs_phenos_prep.R` generates covariates files (genotype PCs, sex, age, age squared, and sample type) and rank-inverse normalises quantitative phenotypes onto the covariates 
 
 ### Generating LD scores
@@ -20,10 +20,14 @@ This repository contains analysis and plotting code for the manuscript *Quantify
 - `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see **Additional**)
 
 ## Data analysis: `aou_h2_workflows/`
-### h2SNP and enrichment calculations
+### Heritability and fold-enrichment estimation
 - `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GCTA GRMs to MPH format
-- `process_mph_outputs.Rmd` aggregates heritability and enrichment per functional annotation category and for rare versus common categories 
+- `process_mph_outputs.Rmd` aggregates heritability and fold-enrichment per functional annotation category and for rare versus common categories
 
+### Simulations
+- `simulate_mph_polars.py` simulates phenotypes by assigning a set heritability per annotation bin. Assumes a normal distribution of effect sizes within each bin, and uses PLINK2 scoring to scale per-SNP betas. Code also rank-inverse normalises + residualises phenotypes
+- phenotypes generated in this way can be used with `run_mph_aou.wdl`
+  
 ## Additional: `aux/`
 - `all_plotting_code.R` contains code for plotting main and supplementary figures
 - `data/h2_results/` contains MPH variance component estimate output files which can be used with `process_mph_outputs.Rmd` and `all_plotting_code.R`

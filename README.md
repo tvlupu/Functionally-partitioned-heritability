@@ -1,11 +1,12 @@
 # Functionally-partitioned-heritability
 This repository contains analysis and plotting code for the manuscript *Quantifying heritability in functional regions of the coding and non-coding genome across diverse individuals*, [available as a preprint on bioRxiv](https://www.biorxiv.org/content/10.64898/2026.10.30.763088v1).
 
+Code is organised in the following sub-directories:
 
 ## `prep/`
 ### Cohort filtering and covariates
 - `cohort_filtering.py` separates individuals into three genetic similarity groups based on AoU labels and performs kinship filtering using maximum independent set methods 
-- `calc_pcs.R` / `run_scat_PCs_aou.wdl` / `pcs_umap.R` calculate principal components and generates UMAP plots per genetic similarity group
+- `calc_pcs.R` / `run_scat_PCs_aou.wdl` / `pcs_umap.R` calculates principal components and generates UMAP plots per genetic similarity group
 - `mph_covs_phenos_prep.R` generates covariates files (genotype PCs, sex, age, age squared, and sample type) and rank-inverse normalises + residualises quantitative phenotypes onto the covariates 
 
 ### Generating LD scores

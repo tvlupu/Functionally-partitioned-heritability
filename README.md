@@ -3,7 +3,7 @@ This repository contains analysis and plotting code for the paper: Quantifying h
 
 Code is organised into the following sub-directories.
 
-## PREPARATION
+## Preparation
 ### Cohort filtering and PC calculation: `prep/covs_phenos/`
 `cohort_filtering.py` creates three genetic similarity groups based on AoU labels and performs kinship filtering using maximum independent set methods \
 `calc_pcs.R`, `pcs_umap.R`, and `run_scat_PCs_aou.wdl` calculate principal components and generates UMAP plots per genetic similarity group 
@@ -13,7 +13,7 @@ Code is organised into the following sub-directories.
 `view_LD.Rmd` graphs and views LD scores per genetic similarity group and/or functional annotation group 
 
 ### Other covariates + phenotype processing: `prep/covs_phenos/mph_covs_phenos_prep.R`
-Generates covariates file and rank-inverse normalises quantitative phenotypes on covariates (genotype PCs, sex, age, age squared, and sample type). 
+Generates covariates file and rank-inverse normalises quantitative phenotypes on covariates (genotype PCs, sex, age, age squared, and sample type)
 
 ### Functional annotations:  `prep/annots/`
 `make_annots.wdl` simplifies annotations to cod/prox/reg/other with `make_annot_files.py`. Uploads updated annotation file to gcloud bucket. (no longer used) \
@@ -24,12 +24,12 @@ Generates covariates file and rank-inverse normalises quantitative phenotypes on
 `run_make_grm_charAnnots.wdl` makes 28 GCTA GRMs using the 28 snplists \
 `run_make_grm_mph.wdl` makes 28 MPH GRMs using the 28 snplists 
 
-## DATA ANALYSIS
+## Data analysis
 ### h2SNP and enrichment calculations: `aou_h2_workflows/`
 `run_greml_aou.wdl` runs GREML-LDMS \
 `run_mph_aou.wdl` runs MPH. Uses `mph_convert_gcta.py` to convert GCTA GRMs to MPH format
 
-## ADDITIONAL
-`results_processing/process_mph_outputs.Rmd`
-`results_processing/all_plotting_code.R` contains code for plotting main and supplementary figures
+## Additional
+`results_processing/process_mph_outputs.Rmd` \
+`results_processing/all_plotting_code.R` contains code for plotting main and supplementary figures \
 `gcta64_alphaGRM.zip` binary file for modified GCTA (includes `--alpha` flag for GRM calculation)

@@ -1,5 +1,5 @@
 # Functionally-partitioned-heritability
-This repository contains analysis and plotting code for the manuscript *Quantifying heritability in functional regions of the coding and non-coding genome across diverse individuals*, [available as a preprint in bioRxiv](https://www.biorxiv.org/content/10.64898/2026.10.30.763088v1).
+This repository contains analysis and plotting code for the manuscript *Quantifying heritability in functional regions of the coding and non-coding genome across diverse individuals*, [available as a preprint on bioRxiv](https://www.biorxiv.org/content/10.64898/2026.10.30.763088v1).
 
 
 ## Data preparation: `prep/`
@@ -21,7 +21,6 @@ This repository contains analysis and plotting code for the manuscript *Quantify
 
 ## Data analysis: `aou_h2_workflows/`
 ### h2SNP and enrichment calculations
-- `run_greml_aou.wdl` runs GCTA GREML-LDMS
 - `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GCTA GRMs to MPH format
 - `process_mph_outputs.Rmd` aggregates heritability and enrichment per functional annotation category and for rare versus common categories 
 

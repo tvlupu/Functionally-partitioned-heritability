@@ -5,9 +5,9 @@ Code is organised in the following sub-directories:
 <br/><br/>
 
 ## `prep/`
-### Cohort filtering and covariates
-- `cohort_filtering.py` separates individuals into three genetic similarity groups based on AoU labels and performs kinship filtering using maximum independent set methods 
-- `calc_pcs.R` / `run_scat_PCs_aou.wdl` / `pcs_umap.R` calculates principal components and generates UMAP plots per genetic similarity group
+### Cohort filtering, covariates, and phenotypes
+- `cohort_filtering.ipynb` separates individuals into three genetic similarity groups based on AoU genetic ancestry labels and performs kinship filtering using maximum independent set methods 
+- `calc_pcs.R` / `run_scat_PCs_aou.wdl` / `pcs_umap.R` calculates principal components and generates UMAP plots per genetic similarity group (colours UMAP plots by self-reported ethnicity)
 - `mph_covs_phenos_prep.R` generates covariate files (genotype PCs, sex, age, age squared, and sample type) and rank-inverse normalises + residualises quantitative phenotypes onto the covariates 
 
 ### LD scores
@@ -15,7 +15,7 @@ Code is organised in the following sub-directories:
 - `view_LD.R` graphs and views LD scores per genetic similarity group and/or functional annotation group 
 
 ### Functional annotations
-- `make_annots_vep.sh` slade script to make per-chromosome functional annotation files (coding, ncRNA, proximal UTR, proximal non-UTR, intronic, distal regulatory)
+- `make_annots_vep.sh` script to make per-chromosome functional annotation files (coding, ncRNA, proximal UTR, proximal non-UTR, intronic, distal regulatory). Uses relevant internal VEP files
 - `run_make_snplists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion 
 
 ### GRMs (Genetic Relationship Matrices)
@@ -25,6 +25,7 @@ Code is organised in the following sub-directories:
 ## `aou_h2_workflows/`
 ### Heritability and fold-enrichment estimation
 - `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GCTA GRMs to MPH format
+- `recalculating_enrichments.ipynb` to recalculate fold-enrichments for overlapping categories (i.e. ncRNA exon subcategories)
 - `process_mph_outputs.Rmd` aggregates heritability and fold-enrichment per functional annotation category and for rare versus common categories
 
 ### Simulations

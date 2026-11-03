@@ -6,7 +6,7 @@ This repository contains analysis and plotting code for the manuscript *Quantify
 ### Cohort filtering and covariates
 - `cohort_filtering.py` separates individuals into three genetic similarity groups based on AoU labels and performs kinship filtering using maximum independent set methods 
 - `calc_pcs.R` / `run_scat_PCs_aou.wdl` / `pcs_umap.R` calculate principal components and generates UMAP plots per genetic similarity group
-- `mph_covs_phenos_prep.R` generates covariates files (genotype PCs, sex, age, age squared, and sample type) and rank-inverse normalises quantitative phenotypes onto the covariates 
+- `mph_covs_phenos_prep.R` generates covariates files (genotype PCs, sex, age, age squared, and sample type) and rank-inverse normalises + residualises quantitative phenotypes onto the covariates 
 
 ### Generating LD scores
 - `run_scat_LD_aou.wdl` generates variant LD scores per genetic similarity group 

@@ -12,11 +12,11 @@ Code is organised in the following sub-directories:
 
 ### LD scores
 - `run_scat_LD_aou.wdl` generates variant LD scores per genetic similarity group 
-- `view_LD.R` graphs and views LD scores per genetic similarity group and/or functional annotation group 
+- `view_LD.ipynb` graphs and views LD scores (binned by MAF) per genetic similarity group and/or functional annotation group
 
 ### Functional variant annotations
 - `make_annots_vep.sh` script to make per-chromosome functional annotation files (coding, ncRNA, proximal UTR, proximal non-UTR, intronic, distal regulatory). Uses relevant internal VEP files
-- `run_make_snplists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion 
+- `run_make_varlists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion 
 
 ### GRMs (Genetic Relationship Matrices)
 - `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see **`aux/`**)
@@ -24,8 +24,8 @@ Code is organised in the following sub-directories:
 
 ## `h2_workflows/`
 ### Heritability and fold-enrichment estimation
-- `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GCTA GRMs to MPH format
-- `recalculating_enrichments.ipynb` to recalculate fold-enrichments for overlapping categories (i.e. ncRNA exon subcategories)
+- `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GRMs to MPH format
+- `recalculating_enrichments.ipynb` to recalculate fold-enrichments for overlapping categories (ncRNA subcategories)
 - `process_mph_outputs.Rmd` aggregates heritability and fold-enrichment per functional annotation category and for rare versus common categories
 
 ### Simulations

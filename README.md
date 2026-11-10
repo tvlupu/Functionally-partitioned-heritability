@@ -22,7 +22,7 @@ Code is organised in the following sub-directories:
 - `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see **`aux/`**)
 <br/><br/>
 
-## `aou_h2_workflows/`
+## `h2_workflows/`
 ### Heritability and fold-enrichment estimation
 - `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GCTA GRMs to MPH format
 - `recalculating_enrichments.ipynb` to recalculate fold-enrichments for overlapping categories (i.e. ncRNA exon subcategories)

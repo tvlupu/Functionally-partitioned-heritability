@@ -1,4 +1,4 @@
-# Functionally-partitioned-heritability
+# Functionally partitioned heritability analysis in All of Us
 This repository contains analysis and plotting code for the manuscript *Quantifying heritability in functional regions of the coding and non-coding genome across diverse individuals*, [available as a preprint on bioRxiv](https://www.biorxiv.org/content/10.64898/2026.10.30.763088v1).
 
 Code is organised in the following sub-directories:
@@ -14,7 +14,7 @@ Code is organised in the following sub-directories:
 - `run_scat_LD_aou.wdl` generates variant LD scores per genetic similarity group 
 - `view_LD.R` graphs and views LD scores per genetic similarity group and/or functional annotation group 
 
-### Functional annotations
+### Functional variant annotations
 - `make_annots_vep.sh` script to make per-chromosome functional annotation files (coding, ncRNA, proximal UTR, proximal non-UTR, intronic, distal regulatory). Uses relevant internal VEP files
 - `run_make_snplists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion 
 

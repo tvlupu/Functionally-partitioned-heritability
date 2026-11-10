@@ -19,7 +19,7 @@ Code is organised in the following sub-directories:
 - `run_make_snplists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion 
 
 ### GRMs (Genetic Relationship Matrices)
-- `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see **Additional**)
+- `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see `aux/`)
 <br/><br/>
 
 ## `aou_h2_workflows/`

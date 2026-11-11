@@ -7,7 +7,8 @@ Code is organised in the following sub-directories:
 ## `prep/`
 ### Cohort filtering, covariates, and phenotypes
 - `cohort_filtering.ipynb` separates individuals into three genetic similarity groups based on AoU genetic ancestry labels and performs kinship filtering using maximum independent set methods 
-- `run_scat_PCs_aou.wdl` / `pcs_umap.ipynb` calculates principal components / generates PC and UMAP plots per genetic similarity group (colours UMAP plots by self-reported ethnicity)
+- `run_scat_PCs_aou.wdl` calculates common-variant principal components using `impute_runPCs.R`.
+- `pcs_umap.ipynb` generates PC and UMAP plots per genetic similarity group (colours UMAP plots by self-reported ethnicity)
 - `mph_covs_phenos_prep.R` generates covariate files (genotype PCs, sex, age, age squared, and sample type) and rank-inverse normalises + residualises quantitative phenotypes onto the covariates 
 
 ### LD scores
@@ -16,10 +17,10 @@ Code is organised in the following sub-directories:
 
 ### Functional variant annotations
 - `make_annots_vep.sh` script to make per-chromosome functional annotation files (coding, ncRNA, proximal UTR, proximal non-UTR, intronic, distal regulatory). Uses relevant internal VEP files
-- `run_make_varlists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion 
+- `run_make_varlists_aou.wdl` using updated annotation file, makes 32 .varlist files (lists of variants per bin) based on annotation, MAF, LD per ancestry. "other" variant list created by exclusion. Uses `ldbins_charAnnots_vep_regother.py` or `ldbins_charAnnots_vep.py` to process variants
 
 ### GRMs (Genetic Relationship Matrices)
-- `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see **`aux/`**)
+- `run_make_grm_charAnnots.wdl` makes 32 GRMs using the 28 autosomal + 4 X-chromosome variant lists. Code uses GCTA-alpha (see **`aux/`**). 
 <br/><br/>
 
 ## `h2_workflows/`

@@ -19,7 +19,7 @@ ldscores = ldscores.loc[ldscores['chr'] == int(chrom)].sort_values(by='ldscore',
 
 # Add variant annotations
 annotsfile = pd.read_csv(f'cat_vep_chr{chrom}.txt', sep=' ', header=None)
-annotsfile.columns = ['VAR', 'ANNOT']
+annotsfile.columns = ['SNP', 'ANNOT']
 
 # Remove duplicate vars, keeping the first one (highest ldscore for ldscores, cod>rna>prox>intr>reg>other for rest)
 annotsfile = annotsfile.drop_duplicates(subset=['SNP'], keep='first')

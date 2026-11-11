@@ -1,0 +1,535 @@
+---
+()---
+title: "process_mph_outputs"
+author: "TVL"
+date: "2026-03-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# CONTENTS
+(0) FUNCTIONS: defines main functions
+(1) Aggregate h2WGS and enrichment per LD bins per ancestry (for one trait)
+(2) META analyse (1)
+(3) Aggregate h2WGS LD bins per all rare and all common bins, or compute ratio of rare to common (for one trait)
+(4) META analyse simulation outputs (for one trait)
+
+
+# 0. Functions
+
+FUNCTION `calc_sums`: calculating h2 sums + SEs + p
+
+```{r}
+calc_sums <- function(data) {
+  vc_num <- nrow(data) - 1 # Number of variance components (excluding total row)
+  half   <- vc_num / 2     # Number of annotation categories (n_cat)
+  
+  m    <- data$m[1:vc_num]
+  vars <- data$var[1:vc_num]
+  
+  # Extract raw variance component covariance matrix (Sigma)
+  Sigma <- as.matrix(
+    data[1:vc_num, (ncol(data) - vc_num):(ncol(data) - 1)]
+  )
+  stopifnot(all(dim(Sigma) == c(vc_num, vc_num)))
+  
+  # Allocate output vectors (n_cat + 1 rows, where last row is Genome Total)
+  v               <- numeric(half + 1)
+  v_var           <- numeric(half + 1)
+  v_cat_tot_covar <- numeric(half + 1)
+  m_cat           <- numeric(half + 1)
+  h2_cat          <- numeric(half + 1)
+  
+  M_tot <- sum(m)
+  H_tot <- sum(vars)
+  
+  # Gradient vector and statistics for total genome density (v_tot)
+  g_tot     <- rep(1 / M_tot, vc_num)
+  v_tot     <- H_tot / M_tot
+  var_v_tot <- as.numeric(t(g_tot) %*% Sigma %*% g_tot)
+  
+  # Loop over annotation categories (low + high LD bins per category)
+  for (grp in seq_len(half)) {
+    idx   <- c(2 * grp - 1, 2 * grp)
+    M_grp <- sum(m[idx])
+    H_grp <- sum(vars[idx])
+    
+    # Linear per-SNP density v = h2 / M
+    v_grp <- H_grp / M_grp
+    
+    # Gradient vector for category density
+    g_grp      <- rep(0, vc_num)
+    g_grp[idx] <- 1 / M_grp
+    
+    # Delta Method variance and cross-covariance with v_tot
+    var_v_grp     <- as.numeric(t(g_grp) %*% Sigma %*% g_grp)
+    cov_v_grp_tot <- as.numeric(t(g_grp) %*% Sigma %*% g_tot)
+    
+    v[grp]               <- v_grp
+    v_var[grp]           <- var_v_grp
+    v_cat_tot_covar[grp] <- cov_v_grp_tot
+    m_cat[grp]           <- M_grp
+    h2_cat[grp]          <- H_grp
+  }
+  
+  # Row (half + 1): Total Genome Baseline
+  v[half + 1]               <- v_tot
+  v_var[half + 1]           <- var_v_tot
+  v_cat_tot_covar[half + 1] <- var_v_tot # Cov(v_tot, v_tot) = Var(v_tot)
+  m_cat[half + 1]           <- M_tot
+  h2_cat[half + 1]          <- H_tot
+  
+  # Single-ancestry Fold Enrichment (E) and Delta Method SE
+  enr    <- v / v_tot
+  enr_se <- numeric(half + 1)
+  
+  for (grp in seq_len(half)) {
+    rel_var <- (v_var[grp] / (v[grp]^2)) + 
+      (var_v_tot / (v_tot^2)) - 
+      (2 * v_cat_tot_covar[grp] / (v[grp] * v_tot))
+    enr_se[grp] <- enr[grp] * sqrt(max(0, rel_var))
+  }
+  enr_se[half + 1] <- 0 # Baseline relative to itself has zero error
+  
+  # Delta-method for Total genome h2 SE
+  h2_tot_pve <- h_tot / V_total
+  g_P_tot    <- rep(-h2_tot_pve / V_total, length(var_all))
+  g_P_tot[1:vc_num] <- g_P_tot[1:vc_num] + 1 / V_total
+  h2_SE_tot  <- sqrt(max(0, as.numeric(t(g_P_tot) %*% Sigma_with_total %*% g_P_tot)))
+  
+  res <- data.frame(
+    m               = m_cat,
+    h2_sum          = h2_cat,
+    h2_SE.          = 
+    v               = v,
+    v_var           = v_var,
+    FE_w            = 1 / v_var,
+    v_cat_tot_covar = v_cat_tot_covar,
+    enr             = enr,
+    enr_se          = enr_se
+  )
+  
+  return(res)
+}
+```
+
+FUNCTION `meta_h2`: META analysis h2
+
+```{r}
+meta_h2 <- function(data) {
+  split_df <- split(data, data$annotation)
+  results <- data.frame(annotation = character(),
+                      meta_h2 = numeric(),
+                      meta_h2_se = numeric(),
+                      meta_h2_p  = numeric(),
+                      Q  = numeric(),
+                      Q_p = numeric(),
+                      I2 = numeric()
+                      )
+  for (ann in split_df) {
+    re <- rma.uni(yi = ann$h2, sei = ann$h2_se, method = "REML")
+    
+    new_row <- data.frame(annotation = ann$annotation[1],
+            meta_h2 = re$b[[1]],
+            meta_h2_se = re$se,
+            meta_h2_p  = re$pval,
+            Q  = re$QE,
+            Q_p = re$QEp,
+            I2 = re$I2
+            )
+    results <- rbind(results, new_row)
+  }
+  return(results)
+}
+```
+
+FUNCTION `meta_enr`: META analysis enrichment
+
+```{r}
+meta_enr <- function(data) {
+  split_df <- split(data, data$annotation)
+  results <- data.frame(annotation = character(),
+                        meta_enr = numeric(),
+                        meta_enr_se = numeric(),
+                        meta_enr_p  = numeric(),
+                        Q  = numeric(),
+                        Q_p = numeric(),
+                        I2 = numeric()
+  )
+  for (ann in split_df) {
+    re <- rma.uni(yi = ann$enr, sei = ann$enr_se, method = "REML")
+    
+    new_row <- data.frame(annotation = ann$annotation[1],
+                          meta_enr = re$b[[1]],
+                          meta_enr_se = re$se,
+                          meta_enr_p  = re$pval,
+                          Q  = re$QE,
+                          Q_p = re$QEp,
+                          I2 = re$I2
+    )
+    results <- rbind(results, new_row)
+ }
+  return(results)
+}
+
+```
+
+
+# MODIFY THIS CELL ONLY
+```{r}
+path <- "data/"     # path to mph output files. default to "data/"
+trait <- ""         # trait name as written in mph output, eg "height_rintres"
+mph_suffix <- ""    # mph suffix, eg "newvep_alpha_deintroned"
+```
+
+
+# 1. Aggregate LD bins per ancestry
+```{r}
+afr <- read.csv(paste0(path, "afr_", trait, "_mph_", mph_suffix, ".mq.vc.csv"))
+amr <- read.csv(paste0(path, "amr_", trait, "_mph_", mph_suffix, ".mq.vc.csv"))
+eur <- read.csv(paste0(path, "eur_", trait, "_mph_", mph_suffix, ".mq.vc.csv"))
+```
+
+## Compute sums per annotation & MAF bin
+
+```{r}
+afr_sums_rc <- calc_sums(afr)
+amr_sums_rc <- calc_sums(amr)
+eur_sums_rc <- calc_sums(eur)
+```
+
+## 1.a T2D liability adjustments
+```{r}
+if(trait=="t2d_finalcontrols") {
+  print("trait is t2d, adjusting h2_obs to l2_liab.")
+  h2_liab <- c(0.346,0.458,0.425) # autosomal
+  #h2_liab <- c(0.346590, 0.466773, 0.434580) # autosomal + X
+  
+  se_liab <- c(0.1284,0.0941,0.09996) # autosomal
+  #se_liab <- c(0.065643, 0.048502, 0.049427) # autosomal + X
+  
+  h2_liab_not_ratio <- h2_liab/c(afr_sums_rc$h2_sum[15], amr_sums_rc$h2_sum[15],
+                                 eur_sums_rc$h2_sum[15])
+  
+  # based on percent h2_cat in h2_total = percent of h2_liab_cat in h2_liab_total
+  # don't need to recalculate enrichments because they are from the proportion of heritability!
+  
+  afr_sums_rc$h2_sum <- afr_sums_rc$h2_sum *h2_liab_not_ratio[[1]]
+  amr_sums_rc$h2_sum <- amr_sums_rc$h2_sum *h2_liab_not_ratio[[2]]
+  eur_sums_gem$h2_sum <- eur_sums_rc$h2_sum *h2_liab_not_ratio[[3]]
+  
+  afr_sums_rc$h2_SE <- afr_sums_rc$h2_SE *h2_liab_not_ratio[[1]]
+  amr_sums_rc$h2_SE <- amr_sums_rc$h2_SE *h2_liab_not_ratio[[2]]
+  eur_sums_rc$h2_SE <- eur_sums_rc$h2_SE *h2_liab_not_ratio[[3]]
+} else {
+  print("trait is not t2d")
+} 
+```
+
+## Combine ancestries
+
+Annotation, h2 (summed value, SE, p-value), enrichment (fold enrichment value, SE, p-value)
+
+```{r}
+annots <- factor( c("01.rare_coding", "02.comm_coding", "03.rare_RNA", "04.comm_RNA",
+            "05.rare_proxUTR", "06.comm_proxUTR", "07.rare_proxnotUTR", "08.comm_proxnotUTR",
+            "09.rare_intronic", "10.comm_intronic", "11.rare_regulatory", "12.comm_regulatory",
+            "13.rare_other", "14.comm_other", "total") )
+allanc_df <- data.frame(annotation=annots, 
+                        #annotation=annots_sepcod,
+                        #annotation=annots_sepRNA,
+                       
+                        AFR_h2 = afr_sums_rc$h2_sum ,
+                        AFR_h2_SE = afr_sums_rc$h2_SE , 
+                        AFR_h2_p = afr_sums_rc$h2_pval , 
+                        AFR_enr_sum = afr_sums_rc$enr_sum , 
+                        AFR_enr_SE =  afr_sums_rc$enr_SE , 
+                        AFR_enr_pval =  afr_sums_rc$enr_pval ,
+                        
+                        AMR_h2 = amr_sums_rc$h2_sum ,
+                        AMR_h2_SE = amr_sums_rc$h2_SE , 
+                        AMR_h2_p = amr_sums_rc$h2_pval , 
+                        AMR_enr_sum = amr_sums_rc$enr_sum , 
+                        AMR_enr_SE =  amr_sums_rc$enr_SE , 
+                        AMR_enr_pval =  amr_sums_rc$enr_pval ,
+                        
+                        EUR_h2 = eur_sums_rc$h2_sum ,
+                        EUR_h2_SE = eur_sums_rc$h2_SE , 
+                        EUR_h2_p = eur_sums_rc$h2_pval , 
+                        EUR_enr_sum = eur_sums_rc$enr_sum , 
+                        EUR_enr_SE = eur_sums_rc$enr_SE , 
+                        EUR_enr_pval = eur_sums_rc$enr_pval 
+                        )
+```
+
+
+# 2. META analysis (main 28 bins)
+
+```{r}
+library(metafor)
+library(dplyr)
+library(tidyr)
+```
+
+## Make separate DF for meta-analysis
+
+```{r}
+
+ancestry <- c(rep("AFR", dim(allanc_df)[1]), 
+            rep("AMR",dim(allanc_df)[1]), 
+            rep("EUR",dim(allanc_df)[1]))
+
+meta_df <- data.frame(annotation = as.character(annots),
+                      #annotation = as.character(annots_sepRNA),
+                      ancestry=ancestry, 
+           h2 = c(allanc_df$AFR_h2, allanc_df$AMR_h2, allanc_df$EUR_h2) , 
+           h2_se = c(allanc_df$AFR_h2_SE, allanc_df$AMR_h2_SE, allanc_df$EUR_h2_SE) ,
+           enr = c(allanc_df$AFR_enr_sum, allanc_df$AMR_enr_sum,allanc_df$EUR_enr_sum) , 
+           enr_se = c(allanc_df$AFR_enr_SE, allanc_df$AMR_enr_SE, allanc_df$EUR_enr_SE)
+)
+```
+
+## Compute META
+
+```{r}
+meta_results_h2 <- meta_h2(meta_df)
+
+half <- dim(allanc_df)[1] -1
+meta_results_enr <- meta_enr(meta_df[c(
+  1:half,(half+2):(half*2+1), (half*2+2):half*3+2
+  ),])
+```
+
+Merge into main csv
+
+```{r}
+allanc_df$annotation <- as.character(annots) 
+
+allanc_df$META_h2 <- meta_results_h2$meta_h2
+allanc_df$META_h2_SE <- meta_results_h2$meta_h2_se
+allanc_df$META_h2_p <- meta_results_h2$meta_h2_p
+allanc_df$META_h2_Q_p <- meta_results_h2$Q_p
+
+allanc_df$META_enr <- c(meta_results_enr$meta_enr, NA)
+allanc_df$META_enr_SE <- c(meta_results_enr$meta_enr_se, NA)
+allanc_df$META_enr_p <- c(meta_results_enr$meta_enr_p, NA)
+allanc_df$META_enr_Q_p <- c(meta_results_enr$Q_p, NA)
+```
+
+```{r}
+write.csv(allanc_df, paste0("", trait,"_foldenr.csv"), row.names=FALSE)
+```
+
+# 3. Summing all rare and all common h2s
+
+Function `calc_rare_common`: merge rare, common, and total heritability/enrichments
+
+```{r}
+calc_rare_common <- function(data) {
+  # Identify indices
+  idx <- 1:28
+  idx_rare <- idx[(idx - 1) %% 4 < 2]     # rows 1,2,5,6,...
+  idx_common <- idx[(idx - 1) %% 4 >= 2]  # rows 3,4,7,8,...
+  
+  # Extract covariance matrix (cols 39–66)
+  cov_mat <- as.matrix(data[, 39:66])
+  
+  # Function to compute variance of a sum
+  calc_var <- function(indices) {
+    sub_cov <- cov_mat[indices, indices]
+    sum(sub_cov)  # includes variances + covariances automatically
+  }
+  
+  # Compute h2
+  h2_rare <- sum(data$pve[idx_rare])
+  h2_common <- sum(data$pve[idx_common])
+  
+  # Compute SE
+  se_rare <- round(sqrt(calc_var(idx_rare)), 7)
+  se_common <- round(sqrt(calc_var(idx_common)), 7)
+  
+  # Output
+  return(data.frame(
+    category = c("rare", "common", "total"),
+    h2_sum = c(h2_rare, h2_common, h2_rare+h2_common),
+    h2_SE = c(se_rare, se_common, data$seP[29])
+  ))
+}
+```
+
+Function `calc_rare_common_ratio`: calculate rare to common heritability ratio
+
+```{r}
+calc_rare_common_ratio <- function(data) {
+  # Identify indices
+  idx <- 1:28
+  idx_rare <- idx[(idx - 1) %% 4 < 2]     # rows 1,2,5,6,...
+  idx_common <- idx[(idx - 1) %% 4 >= 2]  # rows 3,4,7,8,...
+  
+  # Extract covariance matrix (cols 39–66)
+  cov_mat <- as.matrix(data[, 39:66])
+  
+  # Sum of PVE
+  h2_rare <- sum(data$pve[idx_rare])
+  h2_common <- sum(data$pve[idx_common])
+  
+  # Ratio
+  ratio <- h2_rare / h2_common
+  
+  # Variances
+  var_rare <- sum(cov_mat[idx_rare, idx_rare])
+  var_common <- sum(cov_mat[idx_common, idx_common])
+  
+  # Covariance between the sums
+  cov_rc <- sum(cov_mat[idx_rare, idx_common])
+  
+  # Delta-method variance of ratio
+  var_ratio <-
+    (1 / h2_common)^2 * var_rare +
+    (h2_rare / h2_common^2)^2 * var_common -
+    2 * (h2_rare / h2_common^3) * cov_rc
+  
+  se_ratio <- sqrt(var_ratio)
+  
+  # Output
+  data.frame(
+    ratio = ratio,
+    ratio_SE = round(se_ratio, 7)
+  )
+}
+```
+
+per ancestry
+
+```{r}
+afr <- read.csv(paste0(path, "afr_", trait, "_mph_", mph_suffix, ".mq.vc.csv"))
+amr <- read.csv(paste0(path, "amr_", trait, "_mph_", mph_suffix, ".mq.vc.csv"))
+eur <- read.csv(paste0(path, "eur_", trait, "_mph_", mph_suffix, ".mq.vc.csv"))
+```
+
+```{r}
+afr_rc <- calc_rare_common(afr)
+amr_rc <- calc_rare_common(amr)
+eur_rc <- calc_rare_common(eur)
+```
+
+```{r}
+# combined df for meta-analysis
+ancestry <- c(rep("AFR",3), 
+            rep("AMR",3), 
+            rep("EUR",3))
+annots <- c(rep(c("rare", "common", "total"),3))
+
+meta_df_bmi <- data.frame(annotation = as.character(annots), ancestry=ancestry, 
+           h2 = c(afr_rc$h2_sum, amr_rc$h2_sum, eur_rc$h2_sum) , 
+           h2_se = c(afr_rc$h2_SE, amr_rc$h2_SE, eur_rc$h2_SE)
+)
+```
+
+```{r}
+# for t2d, do liability adjustments and different meta-df
+# Liabilities per ancestry from CDC website
+h2_liab <- c(0.282,0.460,0.448)
+se_liab <- c(0.0658, 0.0500, 0.0520)
+h2_liab_not_ratio <- h2_liab/c(sum(afr_rc$h2_sum[3]), sum(amr_rc$h2_sum[3]), sum(eur_rc$h2_sum[3]))
+
+# based on percent h2_cat in h2_total = percent of h2_liab_cat in h2_liab_total
+afr_rc$h2_liab_sum <- afr_rc$h2_sum *h2_liab_not_ratio[[1]]
+afr_rc$h2_liab_se <- afr_rc$h2_SE *h2_liab_not_ratio[[1]]
+
+amr_rc$h2_liab_sum <- amr_rc$h2_sum *h2_liab_not_ratio[[2]]
+amr_rc$h2_liab_se <- amr_rc$h2_SE *h2_liab_not_ratio[[2]]
+
+eur_rc$h2_liab_sum <- eur_rc$h2_sum *h2_liab_not_ratio[[3]]
+eur_rc$h2_liab_se <- eur_rc$h2_SE *h2_liab_not_ratio[[3]]
+
+
+# combined df for meta-analysis
+ancestry <- c(rep("AFR",3), 
+            rep("AMR",3), 
+            rep("EUR",3))
+annots <- c(rep(c("rare", "common", "total"),3))
+
+meta_df_t2d <- data.frame(annotation = as.character(annots), ancestry=ancestry, 
+           h2 = c(afr_rc$h2_liab_sum, amr_rc$h2_liab_sum, eur_rc$h2_liab_sum) , 
+           h2_se = c(afr_rc$h2_liab_se, amr_rc$h2_liab_se, eur_rc$h2_liab_se)
+)
+```
+
+```{r}
+meta_results_h2_hba1c <- meta_h2(meta_df_hba1c)
+```
+
+# 4. META for simulations
+
+```{r}
+#"sim2_height_rintres_seed"
+#"sim2_norna_height_rintres_seed"
+#"sim_nosyn_height_rintres_seed"
+trait <- "sim_nomiss_seed"
+
+sim1 <- read.csv(paste0(path, "afr_", trait,"1_mph_sim_repbins.mq.vc.csv"))
+sim2 <- read.csv(paste0(path, "afr_", trait,"2_mph_sim_repbins.mq.vc.csv"))
+sim3 <- read.csv(paste0(path, "afr_", trait,"3_mph_sim_repbins.mq.vc.csv"))
+sim4 <- read.csv(paste0(path, "afr_", trait,"4_mph_sim_repbins.mq.vc.csv"))
+sim5 <- read.csv(paste0(path, "afr_", trait,"5_mph_sim_repbins.mq.vc.csv"))
+sim6 <- read.csv(paste0(path, "afr_", trait,"6_mph_sim_repbins.mq.vc.csv"))
+sim7 <- read.csv(paste0(path, "afr_", trait,"7_mph_sim_repbins.mq.vc.csv"))
+sim8 <- read.csv(paste0(path, "afr_", trait,"8_mph_sim_repbins.mq.vc.csv"))
+sim9 <- read.csv(paste0(path, "afr_", trait,"9_mph_sim_repbins.mq.vc.csv"))
+sim10 <- read.csv(paste0(path, "afr_", trait,"10_mph_sim_repbins.mq.vc.csv"))
+```
+
+```{r}
+annots_sepcod <- factor( c("011.rare_lof", "012.comm_lof", 
+                           "013.rare_splice", "014.comm_splice",
+                           "015.rare_miss", "016.comm_miss",
+                           "017.rare_syn", "018.comm_syn",
+                           "019.rare_codoth", "020.comm_codoth",
+                           "03.rare_RNA", "04.comm_RNA",
+            "05.rare_proxUTR", "06.comm_proxUTR", "07.rare_proxnotUTR", "08.comm_proxnotUTR",
+            "09.rare_intronic", "10.comm_intronic", "11.rare_regulatory", "12.comm_regulatory",
+            "13.rare_other", "14.comm_other", "total") )
+```
+
+```{r}
+sim_no <- "sim1"
+sim_sums_rc <- calc_sums(sim1)
+sim_sums_rc$sim <- sim_no
+sim_sums_rc$annotation <- as.character(annots_sepcod)
+```
+
+```{r}
+if (sim_no =="sim1" ) {
+          meta_df_h2 <- data.frame(annotation = sim_sums_rc$annotation, 
+          sim = sim_sums_rc$sim, 
+          h2_sum = sim_sums_rc$h2_sum , 
+          h2_SE = sim_sums_rc$h2_SE,
+          enr_sum = sim_sums_rc$enr_sum,
+          enr_SE = sim_sums_rc$enr_SE)
+} else {
+    meta_df_h2 <- rbind(meta_df_h2, sim_sums_rc[,c(9,8,2,3,5,6)])
+}
+```
+
+```{r}
+meta_df_h2 <- dplyr::filter(meta_df_h2, meta_df_h2$annotation != "total")
+colnames(meta_df_h2)[3:6] <- c("h2", "h2_se", "enr", "enr_se")
+simall2_meta_results_h2 <- meta_h2(meta_df_h2)
+simall2_meta_results_enr <- meta_enr(meta_df_h2)
+
+allsims_meta <- data.frame(annotation = simall2_meta_results_enr$annotation,
+                           meta_h2 = simall2_meta_results_h2$meta_h2,
+                           meta_h2_se = simall2_meta_results_h2$meta_h2_se,
+                           meta_h2_p = simall2_meta_results_h2$meta_h2_p,
+                           meta_h2_Q = simall2_meta_results_h2$Q,
+                           meta_enr = simall2_meta_results_enr$meta_enr,
+                           meta_enr_se = simall2_meta_results_enr$meta_enr_se,
+                           meta_enr_p = simall2_meta_results_enr$meta_enr_p,
+                           meta_enr_Q = simall2_meta_results_enr$Q)
+
+write.csv(allsims_meta, paste0(path, "all_", trait,".csv"), row.names=FALSE)
+```

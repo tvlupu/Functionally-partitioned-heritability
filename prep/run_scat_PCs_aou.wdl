@@ -9,7 +9,8 @@ workflow run_scat_PCs_aou {
   scatter (ancestry in ancestry_array) {
     call run_PCs_aou { 
         input:
-            ancestry = ancestry
+            ancestry = ancestry,
+            umap_no = umap_no
         }
     }
 }

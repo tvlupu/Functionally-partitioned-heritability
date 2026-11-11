@@ -1,4 +1,6 @@
+
 version 1.0
+
 
 workflow run_scat_PCs_aou {
   input {
@@ -17,36 +19,26 @@ task run_PCs_aou {
 
     input {
         String ancestry
+        String umap_no
     }
 
     command <<<
     set -euox pipefail
 
-    # get R files
-    gsutil -m cp aou_bucket/PCs/PCs.r  \
-                aou_bucket/PCs/backingfiles/impute.r .
+    # get R file + QCed files
+    gsutil -m cp aou_bucket/PCs/impute_runPCs.R \
+                 aou_bucket/PCs/~{ancestry}_umap~{umap_no}* . 
 
+# QC done locally with:
+#plink2 --bfile ~{ancestry}QC --keep keep_umap~{umap_no}_~{ancestry}_fidiid.txt --autosome --make-bed --out ~{ancestry}_umap~{umap_no}
 
-    ## PART 1 IMPUTATION ##
-        # get QCed files
-        gsutil -m cp aou_bucket/PCs/~{ancestry}QC_umap1* . 
-
-        #plink2 --bfile ~{ancestry}QC --keep keep_umap1_~{ancestry}_fidiid.txt --make-bed --out ~{ancestry}QC_umap1
-        #^ was done locally
-
-        # convert to bigsnpR and impute
-        Rscript impute.R ~{ancestry}
-
+        # convert to bigsnpR + impute + calculate PCs
+        Rscript impute_runPCs.R ~{ancestry} ~{umap_no}
         rm *.bed *.bim *.fam # to save memory
          
         # upload backingfiles
-        gsutil -m cp ~{ancestry}*bk ~{ancestry}*rds "aou_bucket/backingfiles/"
-                      
-    
-    ## PART 2 PCS ##
-        # compute 120 PCs
-        Rscript PCs.R ~{ancestry}
-
+        gsutil -m cp  ~{ancestry}*bk ~{ancestry}*rds "aou_bucket/backingfiles/"
+        
         # upload PCs
         gsutil -m cp *.csv "aou_bucket/PCs/"
 
@@ -57,7 +49,7 @@ task run_PCs_aou {
         docker: "us-central1-docker.pkg.dev/all-of-us-rw-prod/aou-rw-gar-remote-repo-docker-prod/tvlupu/bigsnpr_pca_computation:413" 
         memory: "128 GiB"
         cpu: 32
-        disks: "local-disk 5000 HDD"
+        disks: "local-disk 1000 HDD"
         zones: "us-central1-a"
         cpuPlatform: "Intel Ice Lake"
     }

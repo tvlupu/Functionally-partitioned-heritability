@@ -26,7 +26,7 @@ Code is organised in the following sub-directories:
 ## `h2_workflows/`
 ### Heritability and fold-enrichment estimation
 - `run_mph_aou.wdl` runs [MPH](https://github.com/jiang18/mph/tree/main). Uses `mph_convert_gcta.py` to convert GRMs to MPH format
-- `recalculating_enrichments.ipynb` to recalculate fold-enrichments for overlapping categories (ncRNA subcategories)
+- `make_si_sw.ipynb` and `recalculate_enrichments.R` to recalculate fold-enrichments for overlapping categories (i.e. ncRNA subcategories)
 - `process_mph_outputs.Rmd` aggregates heritability and fold-enrichment per functional annotation category and for rare versus common categories
 
 ### Simulations

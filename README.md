@@ -36,5 +36,4 @@ Code is organised in the following sub-directories:
 
 ## `aux/`
 - `all_plotting_code.R` contains code for plotting main and supplementary figures
-- `data/h2_results/` contains MPH variance component estimate output files which can be used with `process_mph_outputs.Rmd` and `all_plotting_code.R`
 - `gcta64_alphaGRM.zip` binary file for GCTA-alpha, a modified version of [GCTA](https://github.com/jianyangqt/gcta) which includes an optional `--alpha` flag for GRM calculation. Alpha is used to down-weight the contribution of rare variants to GRMs, see [Speed et al. 2017](https://pubmed.ncbi.nlm.nih.gov/28530675/)
